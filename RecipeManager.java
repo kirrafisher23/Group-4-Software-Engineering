@@ -99,6 +99,9 @@ public class RecipeManager extends JFrame{
 		repaint();
 	}
 	
+	/**
+	 * method to display the add recipe form
+	 */
 	private void DisplayAddRecipeForm() {
         ClearScreen();
         JLabel addRecipeLabel = new JLabel("Add a New Recipe");
@@ -189,6 +192,15 @@ public class RecipeManager extends JFrame{
         repaint();
     }
 
+	/**
+	 * adds the recipe to the database when the user selects submit on the add recipe form
+	 * @param recipeName
+	 * @param recipeTime
+	 * @param serveSize
+	 * @param ingredName
+	 * @param tagCall
+	 * @param steps
+	 */
     private void addRecipe(String recipeName, String recipeTime, int serveSize, String ingredName, String tagCall, String steps) {
         String conString = connection;
 
@@ -211,36 +223,133 @@ public class RecipeManager extends JFrame{
         }
     }
     
+    /**
+     * method to display all recipes
+     */
     public void DisplayAllRecipes() {
+        ClearScreen();
+        String conString = connection;
+        try(Connection conn = DriverManager.getConnection(conString, user, pass)){
+            String query = "SELECT * FROM recipe";
+            try(PreparedStatement stmt = conn.prepareStatement(query)){
+                try(ResultSet resultSet = stmt.executeQuery()){
+                    while(resultSet.next()) {
+                        String recipeName = resultSet.getString("recipe_name");
+                        JButton recipeButton = new JButton(recipeName);
+                        recipeButton.addActionListener(e -> DisplayRecipeInfo(recipeName));
+                        gbc.gridy++;
+                        add(recipeButton, gbc);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
+
+        backButton = new JButton("Back to Main Menu");
+        backButton.addActionListener(e -> DisplayFormSelectScreen());
+        gbc.gridy++;
+        add(backButton, gbc);
+
+        pack();
+        repaint();
+    }
+
+    /**
+     * method to display the recipe info for a recipe selected in the view all recipes area
+     * @param recipeName
+     */
+    private void DisplayRecipeInfo(String recipeName) {
     	ClearScreen();
-    	String conString = connection;
-    	try(Connection conn = DriverManager.getConnection(conString, user, pass)){
-    		String query = "SELECT * FROM recipe";
-    		try(PreparedStatement stmt = conn.prepareStatement(query)){
-    			try(ResultSet resultSet = stmt.executeQuery()){
-    				while(resultSet.next()) {
-    					JLabel recipeNameLabel = new JLabel("Recipe Name: " + resultSet.getString("recipe_name"));
-    					gbc.gridy++;
-    					add(recipeNameLabel, gbc);
-    					gbc.gridy++;
-    					add(new JSeparator(JSeparator.HORIZONTAL), gbc);
-    				}
-    			}
-    		}
-    		
-    	} catch (SQLException e) {
-    		JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
-		}
-    	backButton = new JButton("Back to Main Menu");
-    	backButton.addActionListener(e -> DisplayFormSelectScreen());
-    	gbc.gridy++;
-    	add(backButton, gbc);
-    	
-    	pack();
-    	repaint();
-    	
+        String conString = connection;
+        try(Connection conn = DriverManager.getConnection(conString, user, pass)){
+            String recipeQuery = "SELECT * FROM recipe WHERE recipe_name = ?";
+            try(PreparedStatement recipeStmt = conn.prepareStatement(recipeQuery)){
+                recipeStmt.setString(1, recipeName);
+                try(ResultSet recipeResultSet = recipeStmt.executeQuery()){
+                    if(recipeResultSet.next()) {
+                        JLabel recipeNameLabel = new JLabel("Recipe Name: " + recipeResultSet.getString("recipe_name"));
+                        gbc.gridy++;
+                        add(recipeNameLabel, gbc);
+
+                        JLabel recipeTimeLabel = new JLabel("Recipe Time: " + recipeResultSet.getString("recipe_time"));
+                        gbc.gridy++;
+                        add(recipeTimeLabel, gbc);
+
+                        JLabel servingSizeLabel = new JLabel("Serving Size: " + recipeResultSet.getInt("recipe_serving_size"));
+                        gbc.gridy++;
+                        add(servingSizeLabel, gbc);
+
+                        int recipeId = recipeResultSet.getInt("recipe_id");
+                        String ingredientsQuery = "SELECT ingredient_name FROM ingredients WHERE recipeID = ?";
+                        try(PreparedStatement ingredientsStmt = conn.prepareStatement(ingredientsQuery)){
+                            ingredientsStmt.setInt(1, recipeId);
+                            try(ResultSet ingredientsResultSet = ingredientsStmt.executeQuery()){
+                                JLabel ingredientsLabel = new JLabel("Ingredients:");
+                                gbc.gridy++;
+                                add(ingredientsLabel, gbc);
+
+                                while(ingredientsResultSet.next()) {
+                                    String ingredientName = ingredientsResultSet.getString("ingredient_name");
+                                    JLabel ingredientLabel = new JLabel(ingredientName);
+                                    gbc.gridy++;
+                                    add(ingredientLabel, gbc);
+                                }
+                            }
+                        }
+
+                        String tagsQuery = "SELECT tag FROM tags WHERE recipeID = ?";
+                        try(PreparedStatement tagStmt = conn.prepareStatement(tagsQuery)){
+                        	tagStmt.setInt(1, recipeId);
+                        	try(ResultSet tagResultSet = tagStmt.executeQuery()){
+                        		JLabel tagLabel = new JLabel("Tags:");
+                        		gbc.gridy++;
+                        		add(tagLabel, gbc);
+                        		
+                        		while(tagResultSet.next()) {
+                        			String tagName = tagResultSet.getString("tag");
+                        			JLabel tagsLabel = new JLabel(tagName);
+                        			gbc.gridy++;
+                        			add(tagsLabel, gbc);
+                        		}
+                        	}
+                        }
+                        
+                        String stepsQuery = "SELECT steps FROM recipe_steps WHERE recipeID = ?";
+                        try(PreparedStatement stepsStmt = conn.prepareStatement(stepsQuery)){
+                        	stepsStmt.setInt(1, recipeId);
+                        	try(ResultSet stepsResultSet = stepsStmt.executeQuery()){
+                        		JLabel recipeStepsLabel = new JLabel("Recipe Steps:");
+                        		gbc.gridy++;
+                        		add(recipeStepsLabel, gbc);
+                        		
+                        		while(stepsResultSet.next()) {
+                        			String stepsName = stepsResultSet.getString("steps");
+                        			JLabel stepsLabel = new JLabel(stepsName);
+                        			gbc.gridy++;
+                        			add(stepsLabel, gbc);
+                        		}
+                        	}
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
+
+        backButton = new JButton("Back to Recipe List");
+        backButton.addActionListener(e -> DisplayAllRecipes());
+        gbc.gridy++;
+        add(backButton, gbc);
+
+        pack();
+        repaint();
     }
     
+    /**
+     * display edit recipe form where user can select a recipe to edit
+     */
     public void DisplayEditRecipeForm() {
     	ClearScreen();
     	JLabel editRecipeLabel = new JLabel("Select a recipe to edit:");
@@ -283,6 +392,10 @@ public class RecipeManager extends JFrame{
     	
     }
     
+    /**
+     * method that allows user to edit the recipe they selected
+     * @param recipeName
+     */
     public void DisplayEditRecipeDetails(String recipeName) {
     	ClearScreen();
     	JLabel editRecipeLabel = new JLabel("Edit Recipe: " + recipeName);
@@ -375,6 +488,16 @@ public class RecipeManager extends JFrame{
     	
     }
     
+    /**
+     * method to save the changes the user made to the recipe in the database
+     * @param oldRecipeName
+     * @param newRecipeName
+     * @param newRecipeTime
+     * @param newServingSize
+     * @param newIngredients
+     * @param newTags
+     * @param newSteps
+     */
     public void saveEditedRecipe(String oldRecipeName, String newRecipeName, String newRecipeTime, String newServingSize, String newIngredients,String newTags, String newSteps) {
     	 String conString = connection;
     	    try (Connection conn = DriverManager.getConnection(conString, user, pass)) {
@@ -433,7 +556,9 @@ public class RecipeManager extends JFrame{
     }
     
     
-    
+    /**
+     * method for the user to select a recipe to delete
+     */
     public void DisplayDeleteRecipeForm() {
     	ClearScreen();
     	JLabel deleteRecipeLabel = new JLabel("Select a recipe to delete:");
@@ -478,6 +603,10 @@ public class RecipeManager extends JFrame{
     	repaint();
     }
     
+    /**
+     * method to delete a recipe when the user clicks the delete button
+     * @param recipeName
+     */
     private void deleteRecipe(String recipeName) {
     	String conString = connection;
         try (Connection conn = DriverManager.getConnection(conString, user, pass)) {
