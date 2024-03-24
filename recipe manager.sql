@@ -1,13 +1,32 @@
+create schema recipeManager;
+use recipemanager;
+
+
 CREATE TABLE `recipe` (
   `recipe_id` int NOT NULL AUTO_INCREMENT,
   `recipe_name` varchar(45) NOT NULL,
-  `recipe_time`time not NULL,
+  `recipe_time` varchar(8) DEFAULT NULL,
   `recipe_serving_size` int DEFAULT NULL,
   PRIMARY KEY (`recipe_id`),
   UNIQUE KEY `recipe_name_UNIQUE` (`recipe_name`)
 );
-drop table recipe;
-
+CREATE TABLE `ingredients` (
+  `recipeID` int,
+  `ingredient_id` int NOT NULL AUTO_INCREMENT,
+  `ingredient_name` varchar(45) DEFAULT NULL,
+  PRIMARY KEY (`ingredient_id`),
+  CONSTRAINT `recipeIDs_ingredients` FOREIGN KEY (`recipeID`) REFERENCES `recipe` (`recipe_id`)
+);
+CREATE TABLE `measurements` (
+  `measurement_id` int NOT NULL AUTO_INCREMENT,
+  `measurement` varchar(10) DEFAULT NULL,
+  PRIMARY KEY (`measurement_id`)
+);
+CREATE TABLE `quantity` (
+  `quantity_id` int NOT NULL AUTO_INCREMENT,
+  `quantity` float DEFAULT NULL,
+  PRIMARY KEY (`quantity_id`)
+);
 CREATE TABLE `recipe_ingredients` (
   `recipeID` int DEFAULT NULL,
   `ingredientsID` int DEFAULT NULL,
@@ -25,10 +44,24 @@ CREATE TABLE `recipe_ingredients` (
 CREATE TABLE `recipe_steps` (
   `steps_id` int NOT NULL AUTO_INCREMENT,
   `steps` text,
-  `recipeID` int DEFAULT NULL,
+  `recipeID` int,
   PRIMARY KEY (`steps_id`),
   KEY `recipe_id_idx` (`recipeID`),
   CONSTRAINT `recipeID_steps` FOREIGN KEY (`recipeID`) REFERENCES `recipe` (`recipe_id`)
+);
+CREATE TABLE `categories` (
+  `category_id` int NOT NULL AUTO_INCREMENT,
+  `category` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`category_id`),
+  UNIQUE KEY `category_UNIQUE` (`category`)
+);
+CREATE TABLE `tags` (
+  `tag_id` int NOT NULL AUTO_INCREMENT,
+  `tag` varchar(100) DEFAULT NULL,
+  `recipeID` int,
+  PRIMARY KEY (`tag_id`),
+  UNIQUE KEY `tag_UNIQUE` (`tag`),
+  CONSTRAINT `recipeID_tag` FOREIGN KEY (`recipeID`) REFERENCES `recipe` (`recipe_id`)
 );
 CREATE TABLE `recipe_tags` (
   `recipeID` int DEFAULT NULL,
@@ -41,33 +74,6 @@ CREATE TABLE `recipe_tags` (
   CONSTRAINT `recipeID_tags` FOREIGN KEY (`recipeID`) REFERENCES `recipe` (`recipe_id`),
   CONSTRAINT `tagID` FOREIGN KEY (`tagID`) REFERENCES `tags` (`tag_id`)
 );
-CREATE TABLE `tags` (
-  `tag_id` int NOT NULL AUTO_INCREMENT,
-  `tag` varchar(100) DEFAULT NULL,
-  PRIMARY KEY (`tag_id`),
-  UNIQUE KEY `tag_UNIQUE` (`tag`)
-);
-CREATE TABLE `categories` (
-  `category_id` int NOT NULL AUTO_INCREMENT,
-  `category` varchar(100) DEFAULT NULL,
-  PRIMARY KEY (`category_id`),
-  UNIQUE KEY `category_UNIQUE` (`category`)
-);
-CREATE TABLE `ingredients` (
-  `ingredient_id` int NOT NULL AUTO_INCREMENT,
-  `ingredient_name` varchar(45) DEFAULT NULL,
-  PRIMARY KEY (`ingredient_id`)
-);
-CREATE TABLE `measurements` (
-  `measurement_id` int NOT NULL AUTO_INCREMENT,
-  `measurement` varchar(10) DEFAULT NULL,
-  PRIMARY KEY (`measurement_id`)
-);
-CREATE TABLE `quantity` (
-  `quantity_id` int NOT NULL AUTO_INCREMENT,
-  `quantity` float DEFAULT NULL,
-  PRIMARY KEY (`quantity_id`)
-);
 
 delimiter $$
 create procedure add_recipe(
@@ -76,16 +82,35 @@ in recipeTime time,
 in serveSize int,
 in ingredName text,
 in tag_call varchar(255),
-in step text
+in step text,
+out newRecipeId int
 )
 begin 
 insert into recipe(recipe_name,recipe_time,recipe_serving_size) 
 values (recipeName,recipeTime,serveSize);
-insert into ingredients(ingredient_name) 
-values(ingredName);
-insert into tags(tag) values (tag_call);
-insert into recipe_steps(steps) values (step);
- end $$ 
 
-drop procedure add_recipe;
+set newRecipeId = last_insert_id();
+
+insert into ingredients(ingredient_name, recipeID) 
+values(ingredName, newRecipeID);
+
+insert into tags(tag, recipeID) values (tag_call, newRecipeId);
+insert into recipe_steps(steps, recipeID) values (step, newRecipeId);
+ end $$
+
+
+
+select * from recipe;
+select * from ingredients;
+select * from tags;
+select * from recipe_steps;
+
+
+
+
+
+
+
+
+
 
