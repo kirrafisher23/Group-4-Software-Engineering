@@ -1,7 +1,3 @@
-create schema recipeManager;
-use recipemanager;
-
-
 CREATE TABLE `recipe` (
   `recipe_id` int NOT NULL AUTO_INCREMENT,
   `recipe_name` varchar(45) NOT NULL,
@@ -75,42 +71,45 @@ CREATE TABLE `recipe_tags` (
   CONSTRAINT `tagID` FOREIGN KEY (`tagID`) REFERENCES `tags` (`tag_id`)
 );
 
-delimiter $$
-create procedure add_recipe(
-in recipeName varchar(255),
-in recipeTime time,
-in serveSize int,
-in ingredName text,
-in tag_call varchar(255),
-in step text,
-out newRecipeId int
+DELIMITER $$
+
+CREATE PROCEDURE add_recipe(
+    IN recipeName VARCHAR(255),
+    IN recipeTime TIME,
+    IN serveSize INT,
+    IN ingredName TEXT,
+    IN tag_call VARCHAR(255),
+    IN step TEXT,
+    OUT newRecipeId INT
 )
-begin 
-insert into recipe(recipe_name,recipe_time,recipe_serving_size) 
-values (recipeName,recipeTime,serveSize);
+BEGIN
+    INSERT INTO recipe(recipe_name, recipe_time, recipe_serving_size) 
+    VALUES (recipeName, recipeTime, serveSize);
+    SET newRecipeId = LAST_INSERT_ID();
 
-set newRecipeId = last_insert_id();
+    INSERT INTO ingredients(ingredient_name, recipeID) 
+    VALUES(ingredName, newRecipeID);
 
-insert into ingredients(ingredient_name, recipeID) 
-values(ingredName, newRecipeID);
+    INSERT INTO tags(tag, recipeID) VALUES (tag_call, newRecipeId);
 
-insert into tags(tag, recipeID) values (tag_call, newRecipeId);
-insert into recipe_steps(steps, recipeID) values (step, newRecipeId);
- end $$
+    INSERT INTO recipe_steps(steps, recipeID) VALUES (step, newRecipeId);
+END$$
 
-
-
-select * from recipe;
-select * from ingredients;
-select * from tags;
-select * from recipe_steps;
-
-
-
-
-
-
-
-
-
-
+DELIMITER $$
+CREATE PROCEDURE search_recipe(
+    IN search_term VARCHAR(255),
+    IN search_by VARCHAR(255)
+)
+BEGIN
+    IF search_by = 'tag' THEN
+        SELECT r.recipe_id, r.recipe_name, r.recipe_time, r.recipe_serving_size
+        FROM recipe r
+        JOIN tags t ON r.recipe_id = t.recipeID
+        WHERE t.tag LIKE CONCAT('%', search_term, '%');
+    ELSE
+        SELECT recipe_id, recipe_name, recipe_time, recipe_serving_size
+        FROM recipe
+        WHERE recipe_name LIKE CONCAT('%', search_term, '%');
+    END IF;
+END$$
+drop procedure search_recipe;
