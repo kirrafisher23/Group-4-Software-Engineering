@@ -1,0 +1,158 @@
+CREATE SEQUENCE recipe_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NOMAXVALUE;
+
+CREATE SEQUENCE ingredient_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NOMAXVALUE;
+    
+CREATE SEQUENCE measurement_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NOMAXVALUE;
+    
+CREATE SEQUENCE quantity_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NOMAXVALUE;
+    
+CREATE SEQUENCE steps_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NOMAXVALUE;
+
+CREATE SEQUENCE category_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NOMAXVALUE;
+    
+CREATE SEQUENCE tag_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NOMAXVALUE;
+
+CREATE TABLE recipe (
+  recipe_id NUMBER DEFAULT recipe_id_seq.NEXTVAL PRIMARY KEY,
+  recipe_name VARCHAR2(45) NOT NULL,
+  recipe_time VARCHAR2(8) DEFAULT NULL,
+  recipe_serving_size NUMBER DEFAULT NULL,
+  CONSTRAINT recipe_name_unique UNIQUE (recipe_name)
+);
+
+CREATE TABLE ingredients (
+  recipeID NUMBER,
+  ingredient_id NUMBER DEFAULT ingredient_id_seq.NEXTVAL PRIMARY KEY,
+  ingredient_name VARCHAR2(45) DEFAULT NULL,
+  CONSTRAINT recipeIDs_ingredients FOREIGN KEY (recipeID) REFERENCES recipe (recipe_id)
+);
+
+CREATE TABLE measurements (
+  measurement_id NUMBER DEFAULT measurement_id_seq.NEXTVAL PRIMARY KEY,
+  measurement VARCHAR2(10) DEFAULT NULL
+);
+
+CREATE TABLE quantity (
+  quantity_id NUMBER DEFAULT quantity_id_seq.NEXTVAL PRIMARY KEY,
+  quantity FLOAT DEFAULT NULL
+);
+
+CREATE TABLE recipe_ingredients (
+  recipeID NUMBER DEFAULT NULL,
+  ingredientsID NUMBER DEFAULT NULL,
+  quantityID NUMBER DEFAULT NULL,
+  measurementsID NUMBER DEFAULT NULL,
+  CONSTRAINT ingredientsID FOREIGN KEY (ingredientsID) REFERENCES ingredients (ingredient_id),
+  CONSTRAINT measurementsID FOREIGN KEY (measurementsID) REFERENCES measurements (measurement_id),
+  CONSTRAINT quantityID FOREIGN KEY (quantityID) REFERENCES quantity (quantity_id),
+  CONSTRAINT recipeID_ingredient_table FOREIGN KEY (recipeID) REFERENCES recipe (recipe_id)
+);
+
+CREATE INDEX recipe_id_idx ON recipe_ingredients (recipeID);
+CREATE INDEX ingredientsID_idx ON recipe_ingredients (ingredientsID);
+CREATE INDEX quantityID_idx ON recipe_ingredients (quantityID);
+CREATE INDEX measurementsID_idx ON recipe_ingredients (measurementsID);
+
+CREATE TABLE recipe_steps (
+  steps_id NUMBER DEFAULT steps_id_seq.NEXTVAL PRIMARY KEY,
+  steps CLOB,
+  recipeID NUMBER,
+  CONSTRAINT recipeID_steps FOREIGN KEY (recipeID) REFERENCES recipe (recipe_id)
+);
+
+CREATE INDEX recipe_id_idx ON recipe_steps (recipeID);
+
+CREATE TABLE categories (
+  category_id NUMBER DEFAULT category_id_seq.NEXTVAL PRIMARY KEY,
+  category VARCHAR2(100) DEFAULT NULL UNIQUE
+);
+
+CREATE TABLE tags (
+  tag_id NUMBER DEFAULT tag_id_seq.NEXTVAL PRIMARY KEY,
+  tag VARCHAR2(100) DEFAULT NULL UNIQUE,
+  recipeID NUMBER,
+  CONSTRAINT recipeID_tag FOREIGN KEY (recipeID) REFERENCES recipe (recipe_id)
+);
+
+CREATE TABLE recipe_tags (
+  recipeID NUMBER DEFAULT NULL,
+  categoryID NUMBER DEFAULT NULL,
+  tagID NUMBER DEFAULT NULL,
+  CONSTRAINT categoryID FOREIGN KEY (categoryID) REFERENCES categories (category_id),
+  CONSTRAINT recipeID_tags FOREIGN KEY (recipeID) REFERENCES recipe (recipe_id),
+  CONSTRAINT tagID FOREIGN KEY (tagID) REFERENCES tags (tag_id)
+);
+
+CREATE INDEX recipeID_tags_idx ON recipe_tags (recipeID);
+CREATE INDEX categoryID_idx ON recipe_tags (categoryID);
+CREATE INDEX tagID_idx ON recipe_tags (tagID);
+
+CREATE OR REPLACE PROCEDURE add_recipe(
+  recipeName IN VARCHAR2,
+  recipeTime IN VARCHAR2,
+  serveSize IN NUMBER,
+  ingredName IN VARCHAR2,
+  tag_call IN VARCHAR2,
+  step IN VARCHAR2,
+  newRecipeId OUT NUMBER
+)
+IS
+BEGIN
+  INSERT INTO recipe (recipe_name, recipe_time, recipe_serving_size)
+  VALUES (recipeName, recipeTime, serveSize)
+  RETURNING recipe_id INTO newRecipeId;
+
+  INSERT INTO ingredients (ingredient_name, recipeID)
+  VALUES (ingredName, newRecipeId);
+
+  INSERT INTO tags (tag, recipeID)
+  VALUES (tag_call, newRecipeId);
+
+  INSERT INTO recipe_steps (steps, recipeID)
+  VALUES (step, newRecipeId);
+END add_recipe;
+/
+
+
+CREATE OR REPLACE PROCEDURE search_recipe(
+    search_term IN VARCHAR2,
+    search_by IN VARCHAR2,
+    recipe_cursor OUT SYS_REFCURSOR
+)
+IS
+BEGIN
+    IF search_by = 'tag' THEN
+        OPEN recipe_cursor FOR
+        SELECT r.recipe_id, r.recipe_name, r.recipe_time, r.recipe_serving_size
+        FROM recipe r
+        JOIN tags t ON r.recipe_id = t.recipeID
+        WHERE t.tag LIKE '%' || search_term || '%';
+    ELSE
+        OPEN recipe_cursor FOR
+        SELECT r.recipe_id, r.recipe_name, r.recipe_time, r.recipe_serving_size
+        FROM recipe r
+        WHERE r.recipe_name LIKE '%' || search_term || '%';
+    END IF;
+END;
+/

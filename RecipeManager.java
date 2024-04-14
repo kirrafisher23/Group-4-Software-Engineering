@@ -1,4 +1,4 @@
-
+package cen4010;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -6,22 +6,38 @@ import java.awt.event.ActionListener;
 import java.sql.*;
 import javax.swing.*;
 
+import oracle.jdbc.OracleTypes;
+
+
 public class RecipeManager extends JFrame{
 
 	
 	GridBagConstraints gbc;
-	String connection = "jdbc:mysql://localhost:3306/recipemanager?";
-	String user = "guest"; //have to change user and pass to your own user and pass 
-	String pass = "guest";
+	/*String connection = "jdbc:mysql://localhost:3306/recipemanager?";
+	String user = "root"; //have to change user and pass to your own user and pass
+	String pass = "password";*/
+	
+	String user = "G25";
+	String pass = "Password";
+	String connection = "jdbc:oracle:thin:@cisvm-oracle.unfcsd.unf.edu:1521:orcl";
+	
+	
 	JLabel welcomeMessage, registerMessage, selectFormLabel, loginLabel;
 	JTextField usernameField, passwordField;
 	JTextArea errorMessageArea;
 	JButton submitButton, backButton, viewAllRecipesButton, addRecipeButton, editRecipeButton, deleteRecipeButton, searchRecipeButton, exitButton, saveButton;
 	int recipeID = 1;
-	public RecipeManager() {
+	public RecipeManager() throws SQLException {
 		setLayout(new GridBagLayout());
 		gbc = new GridBagConstraints();
-		gbc.insets = new Insets(20, 20, 20, 20);
+		gbc.insets = new Insets(10, 10, 10, 10);
+		
+		
+		DriverManager.registerDriver(new oracle.jdbc.driver.OracleDriver());
+        Connection conn = DriverManager.getConnection(connection, user, pass);
+            // Connection successful
+        
+		
 		DisplaySplashScreen();
 		setTitle("Recipe Manager");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -35,6 +51,7 @@ public class RecipeManager extends JFrame{
 		gbc.gridy = 0;
 		add(errorScrollPane, gbc);
 	}
+	
 
 	private void ClearScreen() {
 		getContentPane().removeAll();
@@ -55,7 +72,7 @@ public class RecipeManager extends JFrame{
 		repaint();
 	}
 
-	// display menue options
+	// display menu options
 	private void DisplayFormSelectScreen() {
 		ClearScreen();
 		selectFormLabel = new JLabel("Welcome, select an option:");
@@ -63,7 +80,7 @@ public class RecipeManager extends JFrame{
 		gbc.gridy = 0;
 		add(selectFormLabel, gbc);
 		
-        searchRecipeButton = new JButton("Search Recipe");
+		searchRecipeButton = new JButton("Search Recipe");
         searchRecipeButton.addActionListener(e -> DisplaySearchRecipeForm());
         gbc.gridy++;
         add(searchRecipeButton, gbc);
@@ -95,9 +112,117 @@ public class RecipeManager extends JFrame{
 		gbc.gridy++;
 		add(exitButton, gbc);
 
+		
 		pack();
 		repaint();
 	}
+	
+	
+	public void DisplaySearchRecipeForm() {
+        ClearScreen();
+        JLabel searchRecipeLabel = new JLabel("Search Recipe");
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        add(searchRecipeLabel, gbc);
+
+        JLabel searchByLabel = new JLabel("Search By:");
+        gbc.gridy++;
+        add(searchByLabel, gbc);
+
+        String[] searchOptions = {"Tag", "Recipe Name"};
+        JComboBox<String> searchByComboBox = new JComboBox<>(searchOptions);
+        gbc.gridy++;
+        add(searchByComboBox, gbc);
+
+        JLabel searchTermLabel = new JLabel("Search Term:");
+        gbc.gridy++;
+        add(searchTermLabel, gbc);
+
+        JTextField searchTermField = new JTextField(20);
+        gbc.gridy++;
+        add(searchTermField, gbc);
+
+        JButton searchButton = new JButton("Search");
+        searchButton.addActionListener(e -> {
+            String searchBy = (String) searchByComboBox.getSelectedItem();
+            if (searchBy.equalsIgnoreCase("Tag")) {
+                searchBy = "tag";
+            } else if (searchBy.equalsIgnoreCase("Recipe Name")) {
+                searchBy = "name";
+            }
+            String searchTerm = searchTermField.getText();
+            searchRecipe(searchBy, searchTerm);
+        });
+        gbc.gridy++;
+        add(searchButton, gbc);
+
+        backButton = new JButton("Back to Main Menu");
+        backButton.addActionListener(e -> DisplayFormSelectScreen());
+        gbc.gridy++;
+        add(backButton, gbc);
+
+        pack();
+        repaint();
+    }
+
+    public void searchRecipe(String searchBy, String searchTerm) {
+        ClearScreen();
+        String conString = connection;
+        
+        try (Connection conn = DriverManager.getConnection(conString, user, pass)) {
+            String storedProcedure = "{CALL search_recipe(?, ?, ?)}";
+            try (CallableStatement stmt = conn.prepareCall(storedProcedure)) {
+                stmt.setString(1, searchTerm);
+                stmt.setString(2, searchBy);
+                stmt.registerOutParameter(3, OracleTypes.CURSOR);
+
+                stmt.execute();
+                try (ResultSet rs = (ResultSet) stmt.getObject(3)) {
+                    boolean recipeFound = false;
+                    while (rs.next()) {
+                        recipeFound = true;
+                        int recipeId = rs.getInt("recipe_id");
+                        String recipeName = rs.getString("recipe_name");
+                        String recipeTime = rs.getString("recipe_time");
+                        int servingSize = rs.getInt("recipe_serving_size");
+
+                        JLabel recipeNameLabel = new JLabel("Recipe Name: " + recipeName);
+                        gbc.gridy++;
+                        add(recipeNameLabel, gbc);
+
+                        JLabel recipeTimeLabel = new JLabel("Recipe Time: " + recipeTime);
+                        gbc.gridy++;
+                        add(recipeTimeLabel, gbc);
+
+                        JLabel servingSizeLabel = new JLabel("Serving Size: " + servingSize);
+                        gbc.gridy++;
+                        add(servingSizeLabel, gbc);
+
+                        JSeparator separator = new JSeparator();
+                        gbc.gridy++;
+                        add(separator, gbc);
+                    }
+
+                    if (!recipeFound) {
+                        JLabel noRecipeLabel = new JLabel("No recipes found.");
+                        gbc.gridy++;
+                        add(noRecipeLabel, gbc);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
+
+
+        backButton = new JButton("Back to Search");
+        backButton.addActionListener(e -> DisplaySearchRecipeForm());
+        gbc.gridy++;
+        add(backButton, gbc);
+
+        pack();
+        repaint();
+    }
 	
 	/**
 	 * method to display the add recipe form
@@ -201,7 +326,7 @@ public class RecipeManager extends JFrame{
 	 * @param tagCall
 	 * @param steps
 	 */
-    private void addRecipe(String recipeName, String recipeTime, int serveSize, String ingredName, String tagCall, String steps) {
+    public void addRecipe(String recipeName, String recipeTime, int serveSize, String ingredName, String tagCall, String steps) {
         String conString = connection;
 
         try (Connection conn = DriverManager.getConnection(conString, user, pass)) {
@@ -259,7 +384,7 @@ public class RecipeManager extends JFrame{
      * method to display the recipe info for a recipe selected in the view all recipes area
      * @param recipeName
      */
-    private void DisplayRecipeInfo(String recipeName) {
+    public void DisplayRecipeInfo(String recipeName) {
     	ClearScreen();
         String conString = connection;
         try(Connection conn = DriverManager.getConnection(conString, user, pass)){
@@ -607,7 +732,7 @@ public class RecipeManager extends JFrame{
      * method to delete a recipe when the user clicks the delete button
      * @param recipeName
      */
-    private void deleteRecipe(String recipeName) {
+    public void deleteRecipe(String recipeName) {
     	String conString = connection;
         try (Connection conn = DriverManager.getConnection(conString, user, pass)) {
             conn.setAutoCommit(false); 
@@ -676,107 +801,6 @@ public class RecipeManager extends JFrame{
             JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
         }
     }
-    private void DisplaySearchRecipeForm() {
-        ClearScreen();
-        JLabel searchRecipeLabel = new JLabel("Search Recipe");
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        add(searchRecipeLabel, gbc);
-
-        JLabel searchByLabel = new JLabel("Search By:");
-        gbc.gridy++;
-        add(searchByLabel, gbc);
-
-        String[] searchOptions = {"Tag", "Recipe Name"};
-        JComboBox<String> searchByComboBox = new JComboBox<>(searchOptions);
-        gbc.gridy++;
-        add(searchByComboBox, gbc);
-
-        JLabel searchTermLabel = new JLabel("Search Term:");
-        gbc.gridy++;
-        add(searchTermLabel, gbc);
-
-        JTextField searchTermField = new JTextField(20);
-        gbc.gridy++;
-        add(searchTermField, gbc);
-
-        JButton searchButton = new JButton("Search");
-        searchButton.addActionListener(e -> {
-            String searchBy = (String) searchByComboBox.getSelectedItem();
-            if (searchBy.equalsIgnoreCase("Tag")) {
-                searchBy = "tag";
-            } else if (searchBy.equalsIgnoreCase("Recipe Name")) {
-                searchBy = "name";
-            }
-            String searchTerm = searchTermField.getText();
-            searchRecipe(searchBy, searchTerm);
-        });
-        gbc.gridy++;
-        add(searchButton, gbc);
-
-        backButton = new JButton("Back to Main Menu");
-        backButton.addActionListener(e -> DisplayFormSelectScreen());
-        gbc.gridy++;
-        add(backButton, gbc);
-
-        pack();
-        repaint();
-    }
-
-    private void searchRecipe(String searchBy, String searchTerm) {
-        ClearScreen();
-        String conString = connection;
-
-        try (Connection conn = DriverManager.getConnection(conString, user, pass)) {
-            String storedProcedure = "{CALL search_recipe(?, ?)}";
-            try (CallableStatement stmt = conn.prepareCall(storedProcedure)) {
-                stmt.setString(1, searchTerm);
-                stmt.setString(2, searchBy);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    boolean recipeFound = false;
-                    while (rs.next()) {
-                        recipeFound = true;
-                        String recipeName = rs.getString("recipe_name");
-                        String recipeTime = rs.getString("recipe_time");
-                        int servingSize = rs.getInt("recipe_serving_size");
-
-                        JLabel recipeNameLabel = new JLabel("Recipe Name: " + recipeName);
-                        gbc.gridy++;
-                        add(recipeNameLabel, gbc);
-
-                        JLabel recipeTimeLabel = new JLabel("Recipe Time: " + recipeTime);
-                        gbc.gridy++;
-                        add(recipeTimeLabel, gbc);
-
-                        JLabel servingSizeLabel = new JLabel("Serving Size: " + servingSize);
-                        gbc.gridy++;
-                        add(servingSizeLabel, gbc);
-
-                        JSeparator separator = new JSeparator();
-                        gbc.gridy++;
-                        add(separator, gbc);
-                    }
-
-                    if (!recipeFound) {
-                        JLabel noRecipeLabel = new JLabel("No recipes found.");
-                        gbc.gridy++;
-                        add(noRecipeLabel, gbc);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
-        }
-
-        backButton = new JButton("Back to Search");
-        backButton.addActionListener(e -> DisplaySearchRecipeForm());
-        gbc.gridy++;
-        add(backButton, gbc);
-
-        pack();
-        repaint();
-    }
 
     // this is gonna take you to the given screens or whatever you wanna call it
     class CustomActionListener implements ActionListener {
@@ -792,7 +816,12 @@ public class RecipeManager extends JFrame{
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
-				new RecipeManager();
+				try {
+					new RecipeManager();
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		});
 	}
