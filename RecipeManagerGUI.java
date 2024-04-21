@@ -1,4 +1,4 @@
-package cen4010;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -21,7 +21,9 @@ public class RecipeManagerGUI extends JFrame{
 	JTextField usernameField, passwordField;
 	JTextArea errorMessageArea;
 	JButton submitButton, backButton, viewAllRecipesButton, addRecipeButton, editRecipeButton, deleteRecipeButton, searchRecipeButton, exitButton, saveButton;
-	
+    private static final int FRAME_WIDTH = 600; // adjust the width
+    private static final int FRAME_HEIGHT = 600; // adjust the height
+    
 	RecipeDatabase recipeData;
 	//int recipeID = 1;
 	public RecipeManagerGUI() throws SQLException {
@@ -29,7 +31,7 @@ public class RecipeManagerGUI extends JFrame{
 		setLayout(new GridBagLayout());
 		gbc = new GridBagConstraints();
 		gbc.insets = new Insets(10, 10, 10, 10);
-		
+		setPreferredSize(new Dimension(FRAME_WIDTH, FRAME_HEIGHT));
 		
 		
 		DriverManager.registerDriver(new oracle.jdbc.driver.OracleDriver());

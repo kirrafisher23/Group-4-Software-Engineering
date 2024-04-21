@@ -1,5 +1,3 @@
-// RecipeDatabase.java
-package cen4010;
 
 import javax.swing.*;
 import java.awt.*;
