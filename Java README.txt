@@ -1,0 +1,4 @@
+1) Our external file dependency is with oracle database provided by the professor. using the database: cisvm-oracle.unfcsd.unf.edu our username is G25 and password is Password.
+2) by executing the run in eclipe, you will be prompted with the gui screen to begin using the application.
+3) Our deviations were not being able to filter the recipes by food ethnicity and dietary restrictions and getting the connection with unity we wanted.These both were was mainly due to lack of time. The Unity portion would've made us switch to c# and we were having issues with the database connnection with c#.
+4) We used creational pattern as our desgin pattern. The idea is that the menu has all features and all features have their own applications for the GUI. The only two apllication that can run in tandem are the search and view recipe, but all applications can return back to the menu, and from there exit the GUI.
