@@ -1,35 +1,62 @@
-
+package cen4010;
+import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.sql.*;
+import java.awt.event.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 import javax.swing.*;
 
 public class RecipeManagerGUI extends JFrame{
-
 	GridBagConstraints gbc;
-	CustomActionListener cal;
-	String connection = "jdbc:mysql://localhost:3306/recipemanager?";
-	String user = "guest"; //have to change user and pass to your own user and pass
-	String pass = "guest";
+	String user = "G25";
+	String pass = "Password";
+	String connection = "jdbc:oracle:thin:@cisvm-oracle.unfcsd.unf.edu:1521:orcl";
+	
+	
 	JLabel welcomeMessage, registerMessage, selectFormLabel, loginLabel;
-	public JTextField usernameField, passwordField;
+	JTextField usernameField, passwordField;
 	JTextArea errorMessageArea;
-	JButton registerButton, loginButton, submitButton, logoutButton, viewRecipesButton, addRecipeButton, editRecipeButton, deleteRecipeButton, searchRecipeButton;
-
-	public RecipeManagerGUI() {
+	JButton submitButton, backButton, viewAllRecipesButton, addRecipeButton, editRecipeButton, deleteRecipeButton, searchRecipeButton, exitButton, saveButton;
+	
+	RecipeDatabase recipeData;
+	//int recipeID = 1;
+	public RecipeManagerGUI() throws SQLException {
+		//setSize(800, 600);
 		setLayout(new GridBagLayout());
 		gbc = new GridBagConstraints();
 		gbc.insets = new Insets(10, 10, 10, 10);
-		cal = new CustomActionListener();
+		
+		
+		
+		DriverManager.registerDriver(new oracle.jdbc.driver.OracleDriver());
+        Connection conn = DriverManager.getConnection(connection, user, pass);
+            // Connection successful
+        
+        
+		
 		DisplaySplashScreen();
 		setTitle("Recipe Manager");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		pack();
 		setVisible(true);
+		
+		errorMessageArea = new JTextArea(5, 20);
+		errorMessageArea.setEditable(false);
+		JScrollPane errorScrollPane = new JScrollPane(errorMessageArea);
+		gbc.gridx = 0;
+		gbc.gridy = 0;
+		add(errorScrollPane, gbc);
+	}
+	
+	public void setRecipeDatabase(RecipeDatabase recipeData) {
+		this.recipeData = recipeData;
 	}
 
-	private void ClearScreen() {
+	public void ClearScreen() {
 		getContentPane().removeAll();
 		getContentPane().repaint();
 		getContentPane().revalidate();
@@ -41,103 +68,17 @@ public class RecipeManagerGUI extends JFrame{
 		gbc.gridx = 0;
 		gbc.gridy = 0;
 		gbc.gridwidth = 2;
+		//gbc.insets = new Insets(10, 10, 10, 10);
 		add(welcomeMessage, gbc);
-
-		registerButton = new JButton("Register");
-		gbc.gridwidth = 1;
-		gbc.gridx = 0;
-		gbc.gridy = 1;
-		registerButton.addActionListener(cal);
-		registerButton.setActionCommand("register");
-		add(registerButton, gbc);
-
-		loginButton = new JButton("Login with Existing Credentials");
-		gbc.gridx = 1;
-		loginButton.addActionListener(cal);
-		loginButton.setActionCommand("login");
-		add(loginButton, gbc);
+		DisplayFormSelectScreen();
 
 		pack();
+		//setSize(800, 600);
 		repaint();
 	}
 
-	private void DisplayRegisterScreen() {
-		ClearScreen();
-		registerMessage = new JLabel("Please enter a new username and password below.");
-		gbc.gridx = 0;
-		gbc.gridy = 0;
-		add(registerMessage, gbc);
-
-		JLabel usernameLabel = new JLabel("Username:");
-		gbc.gridy++;
-		add(usernameLabel, gbc);
-
-		usernameField = new JTextField(20);
-		gbc.gridy++;
-		add(usernameField, gbc);
-
-		JLabel passwordLabel = new JLabel("Password:");
-		gbc.gridy++;
-		add(passwordLabel, gbc);
-
-		passwordField = new JTextField(20);
-		gbc.gridy++;
-		add(passwordField, gbc);
-
-		submitButton = new JButton("Submit");
-		submitButton.setActionCommand("newUserRegister");
-		submitButton.addActionListener(cal);
-		gbc.gridy++;
-		add(submitButton, gbc);
-
-		errorMessageArea = new JTextArea(10, 50);
-		gbc.gridy++;
-		add(errorMessageArea, gbc);
-
-		pack();
-		repaint();
-	}
-
-	// displays login form
-	private void DisplayLoginForm() {
-		ClearScreen();
-		loginLabel = new JLabel("Please enter your credentials below.");
-		gbc.gridx = 0;
-		gbc.gridy = 0;
-		add(loginLabel, gbc);
-
-		JLabel usernameLabel = new JLabel("Username:");
-		gbc.gridy++;
-		add(usernameLabel, gbc);
-
-		usernameField = new JTextField(20);
-		gbc.gridy++;
-		add(usernameField, gbc);
-
-		JLabel passwordLabel = new JLabel("Password:");
-		gbc.gridy++;
-		add(passwordLabel, gbc);
-
-		passwordField = new JTextField(20);
-		gbc.gridy++;
-		add(passwordField, gbc);
-
-		submitButton = new JButton("Login");
-		submitButton.setActionCommand("loginWithCreds");
-		submitButton.addActionListener(cal);
-		gbc.gridy++;
-		add(submitButton, gbc);
-
-		errorMessageArea = new JTextArea(10, 50);
-		gbc.gridy++;
-		add(errorMessageArea, gbc);
-
-		pack();
-		repaint();
-	}
-
-	// once logged in this is the screen that will display
-	private void DisplayFormSelectScreen() {
+	// display menu options
+	public void DisplayFormSelectScreen() {
 		ClearScreen();
 		selectFormLabel = new JLabel("Welcome, select an option:");
 		gbc.gridx = 0;
@@ -145,164 +86,583 @@ public class RecipeManagerGUI extends JFrame{
 		add(selectFormLabel, gbc);
 		
 		searchRecipeButton = new JButton("Search Recipe");
-		searchRecipeButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "Search Recipe - Coming Soon!"));
-		gbc.gridy++;
-		add(searchRecipeButton, gbc);
+        searchRecipeButton.addActionListener(e -> DisplaySearchRecipeForm());
+        gbc.gridy++;
+        add(searchRecipeButton, gbc);
 
-		viewRecipesButton = new JButton("View Recipes");
-		viewRecipesButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "View Recipes - Coming Soon!"));
+		viewAllRecipesButton = new JButton("View All Recipes");
+		viewAllRecipesButton.addActionListener(e -> DisplayAllRecipes());
 		gbc.gridy++;
-		add(viewRecipesButton, gbc);
+		add(viewAllRecipesButton, gbc);
 
 		addRecipeButton = new JButton("Add Recipe");
-		addRecipeButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "Add Recipe - Coming Soon!"));
+		addRecipeButton.addActionListener(e -> DisplayAddRecipeForm());
 		gbc.gridy++;
 		add(addRecipeButton, gbc);
 		
 		//edit recipe button
 		editRecipeButton = new JButton("Edit Recipe");
-		editRecipeButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "Edit Recipe - Coming Soon!"));
+		editRecipeButton.addActionListener(e -> DisplayEditRecipeForm());
 		gbc.gridy++;
 		add(editRecipeButton, gbc);
 		
 		deleteRecipeButton = new JButton("Delete Recipe");
-		deleteRecipeButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "Delete Recipe - Coming Soon!"));
+		deleteRecipeButton.addActionListener(e -> DisplayDeleteRecipeForm());
 		gbc.gridy++;
 		add(deleteRecipeButton, gbc);
 
-		logoutButton = new JButton("Log Out");
-		logoutButton.addActionListener(e -> DisplaySplashScreen());
+		
+		exitButton = new JButton("Exit");
+		exitButton.addActionListener(e -> System.exit(0));
 		gbc.gridy++;
-		add(logoutButton, gbc);
+		add(exitButton, gbc);
 
-		logoutButton.addActionListener(e -> DisplaySplashScreen());
-		gbc.gridy++;
-		add(logoutButton, gbc);
-
+		
 		pack();
 		repaint();
 	}
+	
+	public void displaySearchResults(ResultSet rs) throws SQLException {
+	    ClearScreen();
 
-	// this is gonna take you to the given screens or whatever you wanna call it
-	class CustomActionListener implements ActionListener {
-		public void actionPerformed(ActionEvent e) {
-			switch (e.getActionCommand()) {
-			case "register":
-				DisplayRegisterScreen();
-				break;
-			case "login":
-				DisplayLoginForm();
-				break;
-			case "newUserRegister":
-				RegisterNewUser();
-				break;
-			case "loginWithCreds":
-				LoginWithCredentials();
-				break;
-			}
-		}
-	}
-
-	// calling the addnewUser stored procedure
-	public void RegisterNewUser() {
-		String username = usernameField.getText();
-		String password = passwordField.getText();
-
-		String conString = connection;
-
-		if (username.isEmpty() || password.isEmpty()) {
-			errorMessageArea.setText("Username and password cannot be empty.");
-			return;
-		}
-
-		try {
-			Class.forName("com.mysql.cj.jdbc.Driver"); // Add this line
-			try (Connection conn = DriverManager.getConnection(conString, user, pass)) {
-				// Prepare the stored procedure call
-				String storedProcedure = "{CALL addnewUser(?, ?)}";
-				try (CallableStatement stmt = conn.prepareCall(storedProcedure)) {
-					stmt.setString(1, username);
-					stmt.setString(2, password);
-					stmt.executeUpdate();
-					errorMessageArea.setText("User registration successful!");
-					
-					/*usernameField.setText("");
-					passwordField.setText("");*/
-					
-					//gives new users a login button after registration
-					ClearScreen();
-					JButton login = new JButton("Login");
-					login.addActionListener(e -> DisplayLoginForm());
-					gbc.gridx = 0;
-					gbc.gridy = 0;
-					add(errorMessageArea, gbc);
-					gbc.gridy++;
-					add(login, gbc);
-					pack();
-					repaint();
-					
-					
-				}
-			}
-		} catch (ClassNotFoundException e) {
-			errorMessageArea.setText("MySQL JDBC driver not found: " + e.getMessage());
-		} catch (SQLException e) {
-			errorMessageArea.setText("Error: " + e.getMessage());
-		}
-	}
-
-	// calling the loginCreds stored procedure
-	int loggedInUserID;
-	int loggedInUserRole;
-	String loggedInUserName;
-
-	private void LoginWithCredentials() {
-		String username = usernameField.getText();
-		String password = passwordField.getText();
-
-		String conString = connection;
-
-		if (username.isEmpty() || password.isEmpty()) {
-			errorMessageArea.setText("Username and password cannot be empty.");
-			return;
-		}
-
-		try (Connection conn = DriverManager.getConnection(conString, user, pass)) {
-			// Prepare the stored procedure call
-			String storedProcedure = "{CALL loginCreds(?, ?)}";
-			try (CallableStatement stmt = conn.prepareCall(storedProcedure)) {
-
-				stmt.setString(1, username);
-				stmt.setString(2, password);
-
-				// Execute the query
-				try (ResultSet resultSet = stmt.executeQuery()) {
-					if (resultSet.next()) {
-						// User found, capture ID, username, and role
-						// loggedInUserID = resultSet.getInt("id");
-						loggedInUserName = resultSet.getString("username");
-						// loggedInUserRole = resultSet.getInt("userRole");
-
-						// Display the appropriate screen based on user role
-						DisplayFormSelectScreen();
-
-						// Clear the username and password fields
-						usernameField.setText("");
-						passwordField.setText("");
-					} else {
-						errorMessageArea.setText("Invalid username/password.");
+	    if (rs.next()) {
+	        do {
+	            // Process each row of the result set and create a button for each recipe
+	            String recipeName = rs.getString("recipe_name");
+	            JButton recipeButton = new JButton(recipeName);
+	            recipeButton.addActionListener(e -> {
+					try {
+						DisplayRecipeInfo(recipeName);
+					} catch (SQLException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
 					}
-				}
-			}
-		} catch (SQLException e) {
-			errorMessageArea.setText("Error: " + e.getMessage());
-		}
+				}); // ActionListener to view full recipe
+	            gbc.gridy++;
+	            add(recipeButton, gbc);
+	        } while (rs.next());
+	    } else {
+	        JOptionPane.showMessageDialog(this, "No recipes found.");
+	    }
+	    JButton backButton = new JButton("Back to Main Menu");
+	    backButton.addActionListener(e -> DisplayFormSelectScreen());
+	    gbc.gridy++;
+	    add(backButton, gbc);
+
+	    pack();
+	    repaint();
 	}
 
+	
+	public void DisplaySearchRecipeForm() {
+        ClearScreen();
+        JLabel searchRecipeLabel = new JLabel("Search Recipe");
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        add(searchRecipeLabel, gbc);
+
+        JLabel searchByLabel = new JLabel("Search By:");
+        gbc.gridy++;
+        add(searchByLabel, gbc);
+
+        String[] searchOptions = {"Tag", "Recipe Name"};
+        JComboBox<String> searchByComboBox = new JComboBox<>(searchOptions);
+        gbc.gridy++;
+        add(searchByComboBox, gbc);
+
+        JLabel searchTermLabel = new JLabel("Search Term:");
+        gbc.gridy++;
+        add(searchTermLabel, gbc);
+
+        JTextField searchTermField = new JTextField(20);
+        gbc.gridy++;
+        add(searchTermField, gbc);
+
+        JButton searchButton = new JButton("Search");
+        searchButton.addActionListener(e -> {
+            String searchBy = (String) searchByComboBox.getSelectedItem();
+            if (searchBy.equalsIgnoreCase("Tag")) {
+                searchBy = "tag";
+            } else if (searchBy.equalsIgnoreCase("Recipe Name")) {
+                searchBy = "name";
+            }
+            String searchTerm = searchTermField.getText();
+            try {
+				recipeData.searchRecipe(searchBy, searchTerm);
+			} catch (SQLException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+        });
+        gbc.gridy++;
+        add(searchButton, gbc);
+
+        backButton = new JButton("Back to Main Menu");
+        backButton.addActionListener(e -> DisplayFormSelectScreen());
+        gbc.gridy++;
+        add(backButton, gbc);
+
+        pack();
+        repaint();
+    }
+	
+	private void DisplayAddRecipeForm() {
+        ClearScreen();
+        JLabel addRecipeLabel = new JLabel("Add a New Recipe");
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(10, 10, 10, 10); 
+        add(addRecipeLabel, gbc);
+
+        JLabel recipeNameLabel = new JLabel("Recipe Name:");
+        gbc.gridy++;
+        add(recipeNameLabel, gbc);
+
+        JTextField recipeNameField = new JTextField(40);
+        gbc.gridy++;
+        add(recipeNameField, gbc);
+
+        JLabel recipeTimeLabel = new JLabel("Recipe Time:");
+        gbc.gridy++;
+        add(recipeTimeLabel, gbc);
+
+        JTextField recipeTimeField = new JTextField(40);
+        gbc.gridy++;
+        add(recipeTimeField, gbc);
+
+        JLabel servingSizeLabel = new JLabel("Serving Size:");
+        gbc.gridy++;
+        add(servingSizeLabel, gbc);
+
+        JTextField servingSizeField = new JTextField(40);
+        gbc.gridy++;
+        add(servingSizeField, gbc);
+
+        JLabel ingredientNameLabel = new JLabel("Ingredients:");
+        gbc.gridy++;
+        add(ingredientNameLabel, gbc);
+
+        JTextArea ingredientNameTextArea = new JTextArea(3, 40);
+        JScrollPane ingredientNameScrollPane = new JScrollPane(ingredientNameTextArea);
+        gbc.gridy++;
+        add(ingredientNameScrollPane, gbc);
+
+        JLabel tagLabel = new JLabel("Tag:");
+        gbc.gridy++;
+        add(tagLabel, gbc);
+
+        JTextField tagField = new JTextField(40);
+        gbc.gridy++;
+        add(tagField, gbc);
+
+        JLabel stepsLabel = new JLabel("Recipe Steps:");
+        gbc.gridy++;
+        add(stepsLabel, gbc);
+
+        JTextArea stepsTextArea = new JTextArea(3, 40);
+        JScrollPane stepsScrollPane = new JScrollPane(stepsTextArea);
+        gbc.gridy++;
+        add(stepsScrollPane, gbc);
+
+        JButton submitButton = new JButton("Submit");
+        submitButton.addActionListener(e -> {
+            String recipeName = recipeNameField.getText();
+            String recipeTime = recipeTimeField.getText();
+            String servingSizeText = servingSizeField.getText();
+            int serveSize = 0;
+            if (!servingSizeText.isEmpty()) {
+                try {
+                    serveSize = Integer.parseInt(servingSizeText);
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Invalid serving size. Please enter a valid number.");
+                    return;
+                }
+            }
+            String ingredName = ingredientNameTextArea.getText();
+            String tagCall = tagField.getText();
+            String steps = stepsTextArea.getText();
+            
+            
+
+            recipeData.addRecipe(recipeName, recipeTime, serveSize, ingredName, tagCall, steps);
+            try {
+				DisplayRecipeInfo(recipeName);
+			} catch (SQLException e1) {
+				JOptionPane.showMessageDialog(this, "Error adding recipe: " + e1.getMessage());
+			}
+        });
+        gbc.gridy++;
+        add(submitButton, gbc);
+        
+        backButton = new JButton("Back to Main Menu");
+    	backButton.addActionListener(e -> DisplayFormSelectScreen());
+    	gbc.gridy++;
+    	add(backButton, gbc);
+
+        pack();
+        repaint();
+    }
+	
+	 public void DisplayAllRecipes() {
+	        ClearScreen();
+	        String conString = connection;
+	        try(Connection conn = DriverManager.getConnection(conString, user, pass)){
+	            String query = "SELECT * FROM recipe";
+	            try(PreparedStatement stmt = conn.prepareStatement(query)){
+	                try(ResultSet resultSet = stmt.executeQuery()){
+	                    while(resultSet.next()) {
+	                        String recipeName = resultSet.getString("recipe_name");
+	                        JButton recipeButton = new JButton(recipeName);
+	                        recipeButton.addActionListener(e -> {
+								try {
+									DisplayRecipeInfo(recipeName);
+								} catch (SQLException e1) {
+									// TODO Auto-generated catch block
+									e1.printStackTrace();
+								}
+							});
+	                        gbc.gridy++;
+	                        add(recipeButton, gbc);
+	                    }
+	                }
+	            }
+	        } catch (SQLException e) {
+	            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+	        }
+
+	        backButton = new JButton("Back to Main Menu");
+	        backButton.addActionListener(e -> DisplayFormSelectScreen());
+	        gbc.gridy++;
+	        add(backButton, gbc);
+
+	        pack();
+	        repaint();
+	    }
+	
+	public void DisplayRecipeInfo(String recipeName) throws SQLException {
+    	ClearScreen();
+        String conString = connection;
+        try(Connection conn = DriverManager.getConnection(conString, user, pass)){
+            String recipeQuery = "SELECT * FROM recipe WHERE recipe_name = ?";
+            try(PreparedStatement recipeStmt = conn.prepareStatement(recipeQuery)){
+                recipeStmt.setString(1, recipeName);
+                try(ResultSet recipeResultSet = recipeStmt.executeQuery()){
+                    if(recipeResultSet.next()) {
+                    	
+                        JLabel recipeNameLabel = new JLabel("Recipe Name: " + recipeResultSet.getString("recipe_name"));
+                        gbc.gridy++;
+                        add(recipeNameLabel, gbc);
+
+                        JLabel recipeTimeLabel = new JLabel("Recipe Time: " + recipeResultSet.getString("recipe_time"));
+                        gbc.gridy++;
+                        add(recipeTimeLabel, gbc);
+
+                        JLabel servingSizeLabel = new JLabel("Serving Size: " + recipeResultSet.getInt("recipe_serving_size"));
+                        gbc.gridy++;
+                        add(servingSizeLabel, gbc);
+
+                        int recipeId = recipeResultSet.getInt("recipe_id");
+                        String ingredientsQuery = "SELECT ingredient_name FROM ingredients WHERE recipeID = ?";
+                        try(PreparedStatement ingredientsStmt = conn.prepareStatement(ingredientsQuery)){
+                            ingredientsStmt.setInt(1, recipeId);
+                            try(ResultSet ingredientsResultSet = ingredientsStmt.executeQuery()){
+                                JLabel ingredientsLabel = new JLabel("Ingredients:");
+                                gbc.gridy++;
+                                add(ingredientsLabel, gbc);
+
+                                while(ingredientsResultSet.next()) {
+                                    String ingredientName = ingredientsResultSet.getString("ingredient_name");
+                                    JLabel ingredientLabel = new JLabel(ingredientName);
+                                    gbc.gridy++;
+                                    add(ingredientLabel, gbc);
+                                }
+                            }
+                        }
+
+                        String tagsQuery = "SELECT tag FROM tags WHERE recipeID = ?";
+                        try(PreparedStatement tagStmt = conn.prepareStatement(tagsQuery)){
+                        	tagStmt.setInt(1, recipeId);
+                        	try(ResultSet tagResultSet = tagStmt.executeQuery()){
+                        		JLabel tagLabel = new JLabel("Tags:");
+                        		gbc.gridy++;
+                        		add(tagLabel, gbc);
+                        		
+                        		while(tagResultSet.next()) {
+                        			String tagName = tagResultSet.getString("tag");
+                        			JLabel tagsLabel = new JLabel(tagName);
+                        			gbc.gridy++;
+                        			add(tagsLabel, gbc);
+                        		}
+                        	}
+                        }
+                        
+                        String stepsQuery = "SELECT steps FROM recipe_steps WHERE recipeID = ?";
+                        try(PreparedStatement stepsStmt = conn.prepareStatement(stepsQuery)){
+                        	stepsStmt.setInt(1, recipeId);
+                        	try(ResultSet stepsResultSet = stepsStmt.executeQuery()){
+                        		JLabel recipeStepsLabel = new JLabel("Recipe Steps:");
+                        		gbc.gridy++;
+                        		add(recipeStepsLabel, gbc);
+                        		
+                        		while(stepsResultSet.next()) {
+                        			String stepsName = stepsResultSet.getString("steps");
+                        			JLabel stepsLabel = new JLabel(stepsName);
+                        			gbc.gridy++;
+                        			add(stepsLabel, gbc);
+                        		}
+                        	}
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
+        
+        deleteRecipeButton = new JButton("Delete Recipe");
+        deleteRecipeButton.addActionListener(e -> {
+            int confirmDelete = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete this recipe?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+            if (confirmDelete == JOptionPane.YES_OPTION) {
+				recipeData.deleteRecipe(recipeName);
+				DisplayAllRecipes();
+            }
+        });
+        gbc.gridy++;
+        gbc.gridwidth = 1;
+        add(deleteRecipeButton, gbc);
+
+        
+        
+        editRecipeButton = new JButton("Edit Recipe");
+		editRecipeButton.addActionListener(e -> DisplayEditRecipeDetails(recipeName));
+		//gbc.gridy++;
+		gbc.gridx++;
+		add(editRecipeButton, gbc);
+		
+		backButton = new JButton("Back to Recipe List");
+        backButton.addActionListener(e -> DisplayAllRecipes());
+        gbc.gridx++;
+        add(backButton, gbc);
+
+        pack();
+        repaint();
+    }
+	
+	public void DisplayEditRecipeForm() {
+    	ClearScreen();
+    	JLabel editRecipeLabel = new JLabel("Select a recipe to edit:");
+    	gbc.gridx = 0;
+    	gbc.gridy = 0;
+    	add(editRecipeLabel, gbc);
+    	
+    	JComboBox<String> recipeComboBox = new JComboBox<>();
+    	String conString = connection;
+    	try(Connection conn = DriverManager.getConnection(conString, user, pass)){
+    		String query = "SELECT recipe_name FROM recipe";
+    		try(PreparedStatement stmt = conn.prepareStatement(query)){
+    			try(ResultSet resultSet = stmt.executeQuery()){
+    				while(resultSet.next()) {
+    					recipeComboBox.addItem(resultSet.getString("recipe_name"));
+    					
+    				}
+    			}
+    		}
+    	} catch (SQLException e) {
+    		JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+		}
+    	gbc.gridy++;
+    	add(recipeComboBox, gbc);
+    	JButton editButton = new JButton("Edit");
+    	editButton.addActionListener(e -> {
+    		String selectedRecipe = (String) recipeComboBox.getSelectedItem();
+    		DisplayEditRecipeDetails(selectedRecipe);
+    	});
+    	gbc.gridy++;
+    	add(editButton, gbc);
+    	
+    	backButton = new JButton("Back to Main Menu");
+    	backButton.addActionListener(e -> DisplayFormSelectScreen());
+    	gbc.gridy++;
+    	add(backButton, gbc);
+    	
+    	pack();
+    	repaint();
+    	
+    }
+    
+    /**
+     * method that allows user to edit the recipe they selected
+     * @param recipeName
+     */
+    public void DisplayEditRecipeDetails(String recipeName) {
+    	ClearScreen();
+    	JLabel editRecipeLabel = new JLabel("Edit Recipe: " + recipeName);
+    	gbc.gridx = 0;
+    	gbc.gridy = 0;
+    	add(editRecipeLabel, gbc);
+    	String conString = connection;
+    	try(Connection conn = DriverManager.getConnection(conString, user, pass)){
+    		String query = "SELECT * FROM recipe WHERE recipe_name = ?";
+    		try(PreparedStatement stmt = conn.prepareStatement(query)){
+    			stmt.setString(1, recipeName);
+    			try(ResultSet resultSet = stmt.executeQuery()){
+    				if(resultSet.next()) {
+    					
+    					JLabel recipeNameLabel = new JLabel("Recipe Name:");
+    			        gbc.gridy++;
+    			        add(recipeNameLabel, gbc);
+
+    			        JTextField recipeNameField = new JTextField(40);
+    			        gbc.gridy++;
+    			        add(recipeNameField, gbc);
+
+    			        JLabel recipeTimeLabel = new JLabel("Recipe Time:");
+    			        gbc.gridy++;
+    			        add(recipeTimeLabel, gbc);
+
+    			        JTextField recipeTimeField = new JTextField(40);
+    			        gbc.gridy++;
+    			        add(recipeTimeField, gbc);
+
+    			        JLabel servingSizeLabel = new JLabel("Serving Size:");
+    			        gbc.gridy++;
+    			        add(servingSizeLabel, gbc);
+
+    			        JTextField servingSizeField = new JTextField(40);
+    			        gbc.gridy++;
+    			        add(servingSizeField, gbc);
+
+    			        JLabel ingredientNameLabel = new JLabel("Ingredients:");
+    			        gbc.gridy++;
+    			        add(ingredientNameLabel, gbc);
+
+    			        JTextArea ingredientNameTextArea = new JTextArea(3, 40);
+    			        JScrollPane ingredientNameScrollPane = new JScrollPane(ingredientNameTextArea);
+    			        gbc.gridy++;
+    			        add(ingredientNameScrollPane, gbc);
+
+    			        JLabel tagLabel = new JLabel("Tag:");
+    			        gbc.gridy++;
+    			        add(tagLabel, gbc);
+
+    			        JTextField tagField = new JTextField(40);
+    			        gbc.gridy++;
+    			        add(tagField, gbc);
+
+    			        JLabel stepsLabel = new JLabel("Recipe Steps:");
+    			        gbc.gridy++;
+    			        add(stepsLabel, gbc);
+
+    			        JTextArea stepsTextArea = new JTextArea(3, 40); 
+    			        JScrollPane stepsScrollPane = new JScrollPane(stepsTextArea);
+    			        gbc.gridy++;
+    			        add(stepsScrollPane, gbc);
+    			        
+    			        JButton saveButton = new JButton("Save");
+    			        saveButton.addActionListener(e -> {
+    			        	recipeData.saveEditedRecipe(recipeName, recipeNameField.getText(), recipeTimeField.getText(), servingSizeField.getText(), ingredientNameTextArea.getText(), tagField.getText(), stepsTextArea.getText());
+    			        	try {
+								DisplayRecipeInfo(recipeNameField.getText());
+							} catch (SQLException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+    			        });
+    			        gbc.gridy++;
+    			        add(saveButton, gbc);
+    				}
+    				else {
+    					JOptionPane.showMessageDialog(this, "Recipe not found.");
+    				}
+    			}
+    		}
+    		
+    	} catch (SQLException e) {
+    		JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+		}
+    	
+    	backButton = new JButton("Back to Main Menu");
+    	backButton.addActionListener(e -> DisplayFormSelectScreen());
+    	gbc.gridy++;
+    	add(backButton, gbc);
+    	
+    	pack();
+    	repaint();
+    	
+    	
+    }
+    
+    /**
+     * method for the user to select a recipe to delete
+     */
+    public void DisplayDeleteRecipeForm() {
+    	ClearScreen();
+    	JLabel deleteRecipeLabel = new JLabel("Select a recipe to delete:");
+    	gbc.gridx = 0;
+    	gbc.gridy = 0;
+    	add(deleteRecipeLabel, gbc);
+    	
+    	JComboBox<String> recipeComboBox = new JComboBox<>();
+    	String conString = connection;
+
+        try (Connection conn = DriverManager.getConnection(conString, user, pass)) {
+        	String query = "SELECT recipe_name FROM recipe";
+        	try(PreparedStatement stmt = conn.prepareStatement(query)){
+        		try(ResultSet resultSet = stmt.executeQuery()){
+    				while(resultSet.next()) {
+    					recipeComboBox.addItem(resultSet.getString("recipe_name"));
+    					
+    				}
+        		}
+        	}
+        	 
+        } catch (SQLException e) {
+        	JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+		}
+        gbc.gridy++;
+        add(recipeComboBox, gbc);
+        
+        JButton deleteButton = new JButton("Delete");
+        deleteButton.addActionListener(e -> {
+        	String selectedRecipe = (String) recipeComboBox.getSelectedItem();
+        	recipeData.deleteRecipe(selectedRecipe);
+        });
+        gbc.gridy++;
+        add(deleteButton, gbc);
+        
+        backButton = new JButton("Back to Main Menu");
+    	backButton.addActionListener(e -> DisplayFormSelectScreen());
+    	gbc.gridy++;
+    	add(backButton, gbc);
+    	
+    	pack();
+    	repaint();
+    }
+    
+    
+    class CustomActionListener implements ActionListener {
+        public void actionPerformed(ActionEvent e) {
+            // Empty ActionListener
+        }
+    }
+
+	
+	
+
+	/*Main Class to run everything*/
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
-				new RecipeManagerGUI();
+				try {
+					RecipeDatabase database = new RecipeDatabase();
+					RecipeManagerGUI gui = new RecipeManagerGUI();
+					gui.setRecipeDatabase(database);
+					database.setRecipeManagerGUI(gui);
+					//new RecipeManagerGUI();
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		});
 	}
